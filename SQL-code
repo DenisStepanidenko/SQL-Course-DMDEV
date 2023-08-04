@@ -1,0 +1,749 @@
+CREATE TABLE company
+(
+    id   INT PRIMARY KEY,
+    name VARCHAR(128) UNIQUE NOT NULL,
+    date DATE                NOT NULL CHECK ( date > '1995-01-01' AND date < '2020-01-01' )
+    -- NOT NULL
+    -- UNIQUE
+    -- CHECK
+    -- PRIMARY KEY = UNIQUE NOT NULL
+);
+
+DROP TABLE company;
+
+INSERT INTO company(id, name, date)
+VALUES (1, 'Google', '2001-01-01');
+INSERT INTO company(id, name, date)
+VALUES (3, 'Facebook', '1998-09-13'),
+       (2, 'Apple', '2002-10-29');
+
+DROP TABLE employee;
+
+--CREATE TABLE employee
+-- (
+--     id         SERIAL PRIMARY KEY,
+--     first_name varchar(128) NOT NULL,
+--     last_name  varchar(128) NOT NULL,
+--     salary     int          not null,
+--     UNIQUE (first_name, last_name)
+-- );
+
+INSERT INTO employee(first_name, last_name, salary, company_id)
+VALUES ('Ivan', 'Ivanov', 1000, 1),
+       ('Petr', 'Petrov', 2000, 2),
+       ('Arni', 'Paramonov', 1000, 2),
+       ('Sveta', 'Svetikova', 1500, 3);
+
+INSERT INTO employee(first_name, last_name, salary)
+VALUES ('Ivan', 'Sidorov', 500);
+-- DISTINCT убирает дублирующие данные
+
+SELECT id,
+       first_name f_name,
+       last_name  l_name,
+       salary
+FROM employee
+WHERE first_name LIKE 'Pet%'
+ORDER BY id;
+--DESC - по убыванию
+--OFFSET 1
+--LIMIT 2;
+
+SELECT id,
+       first_name f_name,
+       last_name  l_name,
+       salary
+FROM employee
+WHERE first_name ILIKE 'petr'
+ORDER BY id;
+
+
+SELECT id,
+       first_name f_name,
+       last_name  l_name,
+       salary
+FROM employee
+WHERE first_name ILIKE 'petr'
+ORDER BY id;
+
+SELECT id,
+       first_name f_name,
+       last_name  l_name,
+       salary
+FROM employee
+WHERE salary BETWEEN 1000 AND 1500
+ORDER BY id;
+
+SELECT id,
+       first_name f_name,
+       last_name  l_name,
+       salary
+FROM employee
+WHERE salary IN (1000, 1100, 2000)
+  AND first_name = 'Petr'
+ORDER BY id;
+
+SELECT
+-- агрегирующие функции
+sum(salary),
+avg(salary),
+count(salary)
+-- count по столбцу убирает значения null
+FROM employee;
+SELECT upper(first_name)
+FROM employee;
+SELECT lower(first_name)
+FROM employee;
+SELECT concat(first_name, ' ', salary)
+FROM employee;
+SELECT now();
+
+CREATE TABLE employee
+(
+    id         SERIAL PRIMARY KEY,
+    first_name VARCHAR(128) NOT NULL,
+    last_name  VARCHAR(128) NOT NULL,
+    company_id INT REFERENCES company (id),
+    salary     INT,
+    UNIQUE (first_name, last_name)
+);
+
+DROP TABLE employee;
+
+--LIMIT максимальное количество записей
+-- OFFSET сколько записей пропуситии
+
+SELECT first_name
+FROM employee
+WHERE company_id IS NOT NULL
+UNION
+SELECT first_name
+FROM employee
+WHERE salary IN (1000);
+
+SELECT avg(salary)
+FROM (SELECT *
+      FROM employee
+      ORDER BY salary
+      LIMIT 2) empl;
+
+
+SELECT *,
+       (SELECT max(salary) FROM employee) - salary
+FROM employee
+ORDER BY salary;
+
+INSERT INTO employee(first_name, last_name, company_id, salary)
+VALUES ('Denis', 'Stepanidenko', NULL, 3000);
+
+
+SELECT *
+FROM employee
+WHERE company_id IN (SELECT company_id FROM company);
+
+DELETE
+FROM employee
+WHERE company_id IS NULL;
+
+DELETE
+FROM employee
+WHERE salary = (SELECT max(salary) FROM employee);
+
+UPDATE employee
+SET company_id = 3
+WHERE first_name = 'Ivan'
+RETURNING id , first_name || ' ' || last_name || ' ' || company_id;
+
+-- company_id INT REFERENCES company (id) ON DELETE CASCADE
+
+-- Выполнение практики
+
+CREATE DATABASE book_repository;
+
+CREATE TABLE books_saves
+(
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(128),
+    year_of_public DATE,
+    number_of_page INT,
+    author_id      INT REFERENCES authors (id) ON DELETE CASCADE
+);
+
+DROP TABLE books_saves;
+
+CREATE TABLE authors
+(
+    id      SERIAL PRIMARY KEY,
+    name    VARCHAR(128),
+    surname VARCHAR(128)
+);
+
+INSERT INTO authors(name, surname)
+VALUES ('Стивен', 'Кинг'),
+       ('Федор', 'Достоевский'),
+       ('Лев', 'Толстой'),
+       ('Уильям', 'Шекспир'),
+       ('Марк', 'Твен');
+
+INSERT INTO books_saves(name, year_of_public, number_of_page, author_id)
+VALUES ('Преступление и наказание', '1886-01-01', 550, 2),
+       ('Братья Карамазовы', '1880-01-01', 800, 2),
+       ('Война и мир', '1869-01-01', 1300, 3),
+       ('Анна Каренина', '1877-01-1', 900, 3),
+       ('Гамлет', '1603-01-01', 300, 4),
+       ('Ромео и Джульетта', '1597-01-01', 200, 4),
+       ('Приключение Тома Соейра', '1876-01-01', 275, 5),
+       ('Приключение Гекльберри Финна', '1884-01-01', 366, 5),
+       ('Оно', '1986-01-01', 1138, 1),
+       ('Зеленая миля', '1996-01-01', 400, 1);
+
+SELECT *
+FROM books_saves;
+
+SELECT (name, year_of_public, (SELECT (name) FROM authors WHERE authors.id = books_saves.author_id))
+FROM books_saves
+ORDER BY year_of_public;
+
+SELECT (name, year_of_public, (SELECT (name) FROM authors WHERE id = books_saves.author_id))
+FROM books_saves
+ORDER BY year_of_public DESC;
+
+SELECT (name),
+       (SELECT count(author_id)
+        FROM books_saves
+        WHERE author_id = authors.id)
+FROM authors;
+
+--SELECT avg(number_of_page) FROM books_saves;
+
+SELECT name
+FROM books_saves
+WHERE number_of_page > (SELECT avg(number_of_page) FROM books_saves);
+
+SELECT (name, year_of_public),
+       (SELECT sum(number_of_page)
+        FROM (SELECT *
+              FROM books_saves
+              ORDER BY year_of_public
+              LIMIT 5) pl)
+FROM books_saves
+ORDER BY year_of_public
+LIMIT 5;
+
+
+UPDATE books_saves
+SET number_of_page = 1140
+WHERE name = 'Оно';
+
+SELECT *
+FROM books_saves;
+-- SELECT sum(number_of_page) FROM ( SELECT * FROM books_saves
+--                                   ORDER BY year_of_public
+--                                   LIMIT 5) pl;
+
+--SELECT  count(author_id) FROM books_saves
+--WHERE number_of_page = 550;
+
+
+DELETE
+FROM authors
+WHERE id = (SELECT author_id
+            FROM books_saves
+            ORDER BY number_of_page DESC
+            LIMIT 1);
+
+
+CREATE DATABASE entity_relation;
+CREATE TABLE company
+(
+    id   INT PRIMARY KEY,
+    name VARCHAR(128)
+);
+
+CREATE TABLE employee
+(
+    id         BIGINT PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name  VARCHAR(128),
+    company_id INT REFERENCES company (id)
+);
+
+CREATE TABLE contact
+(
+    id     BIGINT PRIMARY KEY,
+    number VARCHAR(128),
+    type   VARCHAR(128)
+);
+
+SELECT company.name,
+
+       employee.first_name || ' ' || employee.last_name fio
+FROM company,
+     employee
+WHERE company.id = employee.company_id;
+
+
+SELECT c.name,
+       employee.first_name || ' ' || employee.last_name AS fio
+FROM employee
+         JOIN company c on c.id = employee.company_id;
+
+
+SELECT *
+FROM employee
+         CROSS JOIN (SELECT 5) AS fio;
+
+INSERT INTO employee(first_name, last_name, company_id, salary)
+VALUES ('Andrew', 'Zhukov', NULL, 1500);
+
+INSERT INTO company(id, name, date)
+VALUES (4, 'Croc', '2003-01-01');
+
+SELECT c.name,
+       e.first_name
+FROM employee e
+         LEFT JOIN company c on c.id = e.company_id;
+
+SELECT company.name,
+       e.first_name,
+       e.id
+       --      count(e.id)
+FROM company
+         LEFT JOIN employee e on company.id = e.company_id
+GROUP BY company.name, e.first_name, e.id;
+
+INSERT INTO employee(first_name, last_name, company_id, salary)
+VALUES ('fgf', 'hfg', 4, 5000),
+       ('gfege', 'fhtrgerg', 4, 9000);
+
+
+CREATE VIEW employee_view AS
+SELECT name,
+       last_name,
+       --      count(e.id) OVER (),
+       --      max(e.salary) OVER(),
+--         avg(e.salary) OVER(PARTITION BY name),
+       row_number() over (PARTITION BY name),
+       salary,
+       dense_rank() OVER ( PARTITION BY name ORDER BY salary),
+       avg(salary) OVER (PARTITION BY name)
+FROM company
+         LEFT JOIN employee e on company.id = e.company_id
+--GROUP BY company.name
+ORDER BY company.name;
+
+SELECT * -- не кэшируется
+FROM employee_view;
+
+CREATE MATERIALIZED VIEW m_employee_view AS
+SELECT name,
+       last_name,
+       --      count(e.id) OVER (),
+       --      max(e.salary) OVER(),
+--         avg(e.salary) OVER(PARTITION BY name),
+       row_number() over (PARTITION BY name),
+       salary,
+       dense_rank() OVER ( PARTITION BY name ORDER BY salary),
+       avg(salary) OVER (PARTITION BY name)
+FROM company
+         LEFT JOIN employee e on company.id = e.company_id
+--GROUP BY company.name
+ORDER BY company.name;
+
+
+SELECT *
+from m_employee_view;
+
+REFRESH MATERIALIZED VIEW m_employee_view;
+
+ALTER TABLE employee
+    ADD COLUMN gender INT;
+
+
+UPDATE employee
+SET gender = 1
+WHERE id <= 5;
+
+UPDATE employee
+SET gender = 0
+WHERE id > 5;
+
+ALTER TABLE employee
+    ALTER COLUMN gender SET NOT NULL;
+
+ALTER TABLE employee
+    DROP COLUMN gender;
+
+
+-- вторая практика
+
+CREATE DATABASE flight_repository;
+CREATE TABLE airport
+(
+    code    CHAR(3) PRIMARY KEY,
+    country VARCHAR(128) NOT NULL,
+    city    VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE aircraft
+(
+    id    SERIAL PRIMARY KEY,
+    model VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE seat
+(
+    aircraft_id INT REFERENCES aircraft (id),
+    seat_no     VARCHAR(4) NOT NULL,
+    PRIMARY KEY (aircraft_id, seat_no)
+);
+
+CREATE TABLE flight
+(
+    id                     BIGSERIAL PRIMARY KEY,
+    flight_no              VARCHAR(16)                       NOT NULL,
+    departure_date         TIMESTAMP                         NOT NULL,
+    departure_airport_code CHAR(3) REFERENCES airport (code) NOT NULL,
+    arrival_date           TIMESTAMP                         NOT NULL,
+    arrival_airport_code   CHAR(3) REFERENCES airport (code) NOT NULL,
+    aircraft_id            INT REFERENCES aircraft (id)      NOT NULL,
+    status                 VARCHAR(32)                       NOT NULL
+);
+
+CREATE TABLE ticket
+(
+    id             BIGSERIAL PRIMARY KEY,
+    passenger_no   VARCHAR(32)                   NOT NULL,
+    passenger_name VARCHAR(128)                  NOT NULL,
+    flight_id      BIGINT REFERENCES flight (id) NOT NULL,
+    seat_no        VARCHAR(4)                    NOT NULL,
+    cost           NUMERIC(8, 2)                 NOT NULL
+);
+
+
+INSERT INTO airport(code, country, city)
+VALUES ('MNK', 'Беларусь', 'Минск'),
+       ('LDN', 'Англия', 'Лондон'),
+       ('MSK', 'Россия', 'Москва'),
+       ('BSL', 'Испания', 'Барселона');
+
+INSERT INTO aircraft(model)
+VALUES ('Боинг 777-300'),
+       ('Боинг 737-300'),
+       ('Аэробус А320-200'),
+       ('Суперджет-100');
+
+INSERT into seat (aircraft_id, seat_no)
+select id, s.column1
+from aircraft
+         cross join (values ('A1'), ('A2'), ('B1'), ('B2'), ('C1'), ('C2'), ('D1'), ('D2') ORDER BY 1) s;
+
+
+insert into flight (flight_no, departure_date, departure_airport_code, arrival_date, arrival_airport_code, aircraft_id,
+                    status)
+values ('MN3002', '2020-06-14T14:30', 'MNK', '2020-06-14T18:07', 'LDN', 1, 'ARRIVED'),
+       ('MN3002', '2020-06-16T09:15', 'LDN', '2020-06-16T13:00', 'MNK', 1, 'ARRIVED'),
+       ('BC2801', '2020-07-28T23:25', 'MNK', '2020-07-29T02:43', 'LDN', 2, 'ARRIVED'),
+       ('BC2801', '2020-08-01T11:00', 'LDN', '2020-08-01T14:15', 'MNK', 2, 'DEPARTED'),
+       ('TR3103', '2020-05-03T13:10', 'MSK', '2020-05-03T18:38', 'BSL', 3, 'ARRIVED'),
+       ('TR3103', '2020-05-10T07:15', 'BSL', '2020-05-10T012:44', 'MSK', 3, 'CANCELLED'),
+       ('CV9827', '2020-09-09T18:00', 'MNK', '2020-09-09T19:15', 'MSK', 4, 'SCHEDULED'),
+       ('CV9827', '2020-09-19T08:55', 'MSK', '2020-09-19T10:05', 'MNK', 4, 'SCHEDULED'),
+       ('QS8712', '2020-12-18T03:35', 'MNK', '2020-12-18T06:46', 'LDN', 2, 'ARRIVED');
+
+insert into ticket (passenger_no, passenger_name, flight_id, seat_no, cost)
+values ('112233', 'Иван Иванов', 1, 'A1', 200),
+       ('23234A', 'Петр Петров', 1, 'B1', 180),
+       ('SS988D', 'Светлана Светикова', 1, 'B2', 175),
+       ('QYASDE', 'Андрей Андреев', 1, 'C2', 175),
+       ('POQ234', 'Иван Кожемякин', 1, 'D1', 160),
+       ('898123', 'Олег Рубцов', 1, 'A2', 198),
+       ('555321', 'Екатерина Петренко', 2, 'A1', 250),
+       ('QO23OO', 'Иван Розмаринов', 2, 'B2', 225),
+       ('9883IO', 'Иван Кожемякин', 2, 'C1', 217),
+       ('123UI2', 'Андрей Буйнов', 2, 'C2', 227),
+       ('SS988D', 'Светлана Светикова', 2, 'D2', 277),
+       ('EE2344', 'Дмитрий Трусцов', 3, 'А1', 300),
+       ('AS23PP', 'Максим Комсомольцев', 3, 'А2', 285),
+       ('322349', 'Эдуард Щеглов', 3, 'B1', 99),
+       ('DL123S', 'Игорь Беркутов', 3, 'B2', 199),
+       ('MVM111', 'Алексей Щербин', 3, 'C1', 299),
+       ('ZZZ111', 'Денис Колобков', 3, 'C2', 230),
+       ('234444', 'Иван Старовойтов', 3, 'D1', 180),
+       ('LLLL12', 'Людмила Старовойтова', 3, 'D2', 224),
+       ('RT34TR', 'Степан Дор', 4, 'A1', 129),
+       ('999666', 'Анастасия Шепелева', 4, 'A2', 152),
+       ('234444', 'Иван Старовойтов', 4, 'B1', 140),
+       ('LLLL12', 'Людмила Старовойтова', 4, 'B2', 140),
+       ('LLLL12', 'Роман Дронов', 4, 'D2', 109),
+       ('112233', 'Иван Иванов', 5, 'С2', 170),
+       ('NMNBV2', 'Лариса Тельникова', 5, 'С1', 185),
+       ('DSA586', 'Лариса Привольная', 5, 'A1', 204),
+       ('DSA583', 'Артур Мирный', 5, 'B1', 189),
+       ('DSA581', 'Евгений Кудрявцев', 6, 'A1', 204),
+       ('EE2344', 'Дмитрий Трусцов', 6, 'A2', 214),
+       ('AS23PP', 'Максим Комсомольцев', 6, 'B2', 176),
+       ('112233', 'Иван Иванов', 6, 'B1', 135),
+       ('309623', 'Татьяна Крот', 6, 'С1', 155),
+       ('319623', 'Юрий Дувинков', 6, 'D1', 125),
+       ('322349', 'Эдуард Щеглов', 7, 'A1', 69),
+       ('DIOPSL', 'Евгений Безфамильная', 7, 'A2', 58),
+       ('DIOPS1', 'Константин Швец', 7, 'D1', 65),
+       ('DIOPS2', 'Юлия Швец', 7, 'D2', 65),
+       ('1IOPS2', 'Ник Говриленко', 7, 'C2', 73),
+       ('999666', 'Анастасия Шепелева', 7, 'B1', 66),
+       ('23234A', 'Петр Петров', 7, 'C1', 80),
+       ('QYASDE', 'Андрей Андреев', 8, 'A1', 100),
+       ('1QAZD2', 'Лариса Потемнкина', 8, 'A2', 89),
+       ('5QAZD2', 'Карл Хмелев', 8, 'B2', 79),
+       ('2QAZD2', 'Жанна Хмелева', 8, 'С2', 77),
+       ('BMXND1', 'Светлана Хмурая', 8, 'В2', 94),
+       ('BMXND2', 'Кирилл Сарычев', 8, 'D1', 81),
+       ('SS988D', 'Светлана Светикова', 9, 'A2', 222),
+       ('SS978D', 'Андрей Желудь', 9, 'A1', 198),
+       ('SS968D', 'Дмитрий Воснецов', 9, 'B1', 243),
+       ('SS958D', 'Максим Гребцов', 9, 'С1', 251),
+       ('112233', 'Иван Иванов', 9, 'С2', 135),
+       ('NMNBV2', 'Лариса Тельникова', 9, 'B2', 217),
+       ('23234A', 'Петр Петров', 9, 'D1', 189),
+       ('123951', 'Полина Зверева', 9, 'D2', 234);
+
+
+--  Кто летел позавчера рейсом Минск (MNK) - Лондон (LDN) на месте B1?
+
+SELECT *
+FROM ticket AS t
+         LEFT JOIN flight f on t.flight_id = f.id
+WHERE seat_no = 'B1'
+  AND departure_airport_code = 'MNK'
+  AND arrival_airport_code = 'LDN'
+  AND arrival_date = '2020-06-14 18:07:00.000000';
+
+-- SELECT (now() - interval '2 days')::date ;  --как записать запрос на позавчера
+
+
+-- Сколько мест осталось незанятыми 2020-06-14 на рейсе MN3002?
+
+-- сколько осталось мест
+-- ((SELECT count(seat_no)
+--   FROM (SELECT seat_no
+--         FROM seat
+--         WHERE aircraft_id = (SELECT aircraft_id
+--                              FROM flight
+--                              WHERE flight_no = 'MN3002'
+--                                AND departure_date::date = '2020-06-14')) AS t) -
+--     (SELECT count(*)
+--     FROM ticket
+--     WHERE flight_id =
+--     (SELECT id FROM flight WHERE flight_no = 'MN3002' AND departure_date::date = '2020-06-14')))
+
+
+SELECT *
+FROM seat
+WHERE aircraft_id = (SELECT aircraft_id
+                     FROM flight
+                     WHERE flight_no = 'MN3002'
+                       AND departure_date::date = '2020-06-14')
+
+
+OFFSET(
+    (SELECT count(*)
+     FROM ticket
+     WHERE flight_id =
+           (SELECT id FROM flight WHERE flight_no = 'MN3002' AND departure_date::date = '2020-06-14')));
+
+
+SELECT aircraft_id, count(*)
+FROM seat
+WHERE aircraft_id = 1
+GROUP BY aircraft_id;
+
+
+SELECT s.seat_no
+FROM seat s
+WHERE aircraft_id = 1
+  AND NOT EXISTS(SELECT seat_no
+                 FROM ticket t
+                          LEFT JOIN flight f on t.flight_id = f.id
+                 WHERE f.flight_no = 'MN3002'
+                   AND f.departure_date::date = '2020-06-14'
+                   AND t.seat_no = s.seat_no);
+
+SELECT seat_no
+FROM ticket
+         LEFT JOIN flight f on ticket.flight_id = f.id
+WHERE f.flight_no = 'MN3002'
+  AND f.departure_date::date = '2020-06-14';
+
+
+-- 5.	Какие 2 перелета были самые длительные за все время?
+
+SELECT *, (f.arrival_date - f.departure_date)::time AS timeF
+FROM flight f
+ORDER BY timeF DESC
+LIMIT 2;
+
+
+-- 6.	Какая максимальная и минимальная продолжительность перелетов между Минском и Лондоном
+-- и сколько было всего таких перелетов
+
+SELECT count(*) AS number_of_flights,
+       (SELECT max(t.time) AS max_time
+        FROM (SELECT id,
+                     (arrival_date - departure_date)::time
+              FROM flight
+              WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+                 OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')) AS t),
+       (SELECT min(t.time) AS min_time
+        FROM (SELECT id,
+                     (arrival_date - departure_date)::time
+              FROM flight
+              WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+                 OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')) AS t)
+FROM flight
+WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+   OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK');
+
+
+-- SELECT id,
+--        (arrival_date - departure_date)::time
+-- FROM flight
+-- WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+--    OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')
+-- ORDER BY (arrival_date - departure_date);
+
+
+SELECT max(t.time)
+FROM (SELECT id,
+             (arrival_date - departure_date)::time
+      FROM flight
+      WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+         OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')
+      ORDER BY (arrival_date - departure_date)) AS t;
+
+SELECT min(t.time)
+FROM (SELECT id,
+             (arrival_date - departure_date)::time
+      FROM flight
+      WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+         OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')
+      ORDER BY (arrival_date - departure_date)) AS t;
+
+
+
+-- (arrival_date - departure_date)::time
+
+--- альтернатива через оконные функции
+
+SELECT first_value((arrival_date - departure_date)::time)
+       over (ORDER BY (arrival_date - flight.departure_date)) AS    min_value,
+       first_value((arrival_date - departure_date)::time)
+       over (ORDER BY (arrival_date - flight.departure_date) DESC ) max_value,
+       count(*) over ()                                       AS    number_of_flight
+FROM flight
+WHERE (departure_airport_code = 'MNK' AND arrival_airport_code = 'LDN')
+   OR (departure_airport_code = 'LDN' AND arrival_airport_code = 'MNK')
+LIMIT 1;
+
+-- 7.	Какие имена встречаются чаще всего и какую долю от числа всех пассажиров они составляют?
+
+SELECT passenger_name
+FROM ticket
+ORDER BY passenger_name;
+
+
+SELECT passenger_name,
+       count(*)
+FROM ticket
+GROUP BY passenger_name;
+
+SELECT passenger_name,
+       count(*),
+       (CAST(count(*) AS float) / (SELECT count(*) FROM ticket)) AS answer
+FROM ticket
+group by ticket.passenger_name
+ORDER BY answer DESC;
+
+
+SELECT passenger_name, (CAST(count(*) AS float) / (SELECT count(*) FROM ticket)) AS fraction
+FROM ticket
+group by passenger_name
+ORDER BY fraction DESC;
+
+
+
+--
+-- SELECT *
+-- FROM (SELECT passenger_name,
+--              count(*)
+--       FROM ticket t
+--       WHERE t.passenger_name = passenger_name
+--       GROUP BY passenger_name) AS p
+-- ORDER BY p.count DESC;
+
+-- 8.	Вывести имена пассажиров, сколько всего каждый с таким именем купил билетов,
+-- а также на сколько это количество меньше от того имени пассажира, кто купил билетов больше всего
+
+SELECT passenger_no ,
+       count(*) AS number_of_ticket ,
+       count(*) - (SELECT max(number_of_ticket) FROM (SELECT count(*) AS number_of_ticket
+                                                      FROM ticket t
+                                                      GROUP BY t.passenger_name) as tnot) AS difference ,
+       passenger_name
+
+FROM ticket
+GROUP BY passenger_no, passenger_name
+ORDER BY number_of_ticket DESC;
+
+
+-- 9.	Вывести стоимость всех маршрутов по убыванию.
+-- Отобразить разницу в стоимости между текущим и ближайшими в отсортированном списке маршрутами
+
+SELECT flight_no ,
+       cost,
+       COALESCE( -(cost - lead(cost) OVER (ORDER BY cost)) , 0)
+FROM flight
+LEFT JOIN public.ticket t on flight.id = t.flight_id
+ORDER BY cost DESC;
+
+
+SELECT t1.* ,
+        COALESCE(-(lead(sum) OVER(ORDER BY sum DESC) - t1.sum) , 0)
+FROM (SELECT flight_id,
+             sum(cost),
+             flight_no
+      FROM ticket t
+               LEFT JOIN flight f on f.id = t.flight_id
+      GROUP BY flight_id, flight_no
+      ORDER BY sum DESC) AS t1;
+
+
+
+-- SELECT flight_id,
+--        sum(cost),
+--        flight_no
+-- FROM ticket t
+-- LEFT JOIN flight f on f.id = t.flight_id
+-- GROUP BY flight_id, flight_no
+-- ORDER BY sum DESC;
+--GROUP BY  flight_no , cost;
+
+
+VALUES (1, 2),
+       (3, 4),
+       (5, 6),
+       (7, 8)
+--UNION ALL
+INTERSECT
+VALUES
+(1, 2),
+(3, 4),
+(5, 6),
+(7, 9);
+
+
+VALUES (1),(3),(8),(9)
+--UNION ALL
+--INTERSECT
+EXCEPT
+VALUES (1),(3),(4),(6)
